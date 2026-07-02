@@ -14,8 +14,9 @@
 
 # Terraform Azure Policy
 
-A curated, enterprise-grade Azure Policy baseline plus a full policy engine: definitions, initiatives,
-assignments, and exemptions at any scope.
+A KISS Azure Policy module: a curated baseline of sensible built-in policies to get you governing
+quickly, plus a simple engine for your own definitions, initiatives, assignments, and exemptions at
+any scope.
 
 [![CI](https://github.com/libre-devops/terraform-azurerm-policy/actions/workflows/ci.yml/badge.svg)](https://github.com/libre-devops/terraform-azurerm-policy/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/libre-devops/terraform-azurerm-policy?sort=semver&label=release)](https://github.com/libre-devops/terraform-azurerm-policy/releases/latest)
@@ -26,7 +27,9 @@ assignments, and exemptions at any scope.
 
 ## Overview
 
-Two layers in one module:
+This is deliberately NOT an enterprise landing-zone framework clone. It is the pragmatic middle
+ground: far better scale and consistency than clicking policies together manually, without the
+ceremony of a full ALZ policy estate. Two layers in one module:
 
 - **The curated baseline** (`baseline_policies`): a catalog of sensible BUILT-IN Microsoft policies,
   assigned individually so each is toggled, tuned, and exempted on its own. Adding a policy is one map
@@ -37,11 +40,12 @@ Two layers in one module:
   names, allowed effects, and role requirements were verified against the live platform, and every
   default is overridable per entry. The `baseline_catalog_keys` output lists the catalog.
 - **The engine** (`policy_definitions`, `policy_set_definitions`, `policy_assignments`,
-  `policy_exemptions`): everything the baseline does not cover. Custom definitions from HCL objects or
-  versioned JSON files, custom initiatives that cross-reference those definitions by key, assignments
-  of anything (custom or built-in) at **any scope** (management group, subscription, resource group, or
-  single resource, detected from the scope id and routed to the right resource), and exemptions that
-  target an assignment by key.
+  `policy_exemptions`): your own policies, cleanly. A custom policy is one versioned .json rule file
+  (hand-written or exported from the portal) plus one map entry, or an inline HCL object; assignments
+  and initiatives reference it by key and the module resolves the ids. Assignments target anything
+  (custom or built-in) at **any scope** (management group, subscription, resource group, or single
+  resource, detected from the scope id and routed to the right resource), and exemptions target an
+  assignment by key.
 
 Enterprise conveniences handled for you: plain parameter values are wrapped into the ARM assignment
 format; Modify / DeployIfNotExists assignments get a system-assigned identity and the module grants it
@@ -113,11 +117,13 @@ module "policy" {
 
 ## Examples
 
-- [`examples/minimal`](./examples/minimal) - three no-parameter guardrails at resource group scope
-  (including the computed-scope `scope_type` pattern).
+- [`examples/minimal`](./examples/minimal) - three guardrails at resource group scope, including a
+  one-line override of a curated default (soft delete softened to Audit) and the computed-scope
+  `scope_type` pattern.
 - [`examples/complete`](./examples/complete) - the full surface: the baseline with parameters, effect
   and enforcement overrides, the identity-bearing Modify policy with its automatic role grant, the
-  MCSB initiative, a custom definition and initiative, engine assignments with non-compliance
+  MCSB initiative, custom definitions (one from a versioned .json file, one inline HCL), a custom
+  initiative, engine assignments with non-compliance
   messages, overrides, and resource selectors, and exemptions targeting baseline and engine
   assignments. Everything is scoped to a disposable resource group, so the Deny effects govern nothing
   but the example itself.

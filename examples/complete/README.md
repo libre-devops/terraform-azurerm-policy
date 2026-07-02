@@ -113,8 +113,19 @@ module "policy" {
     audit_custom_rbac_roles    = {}
   }
 
-  # ---------- Engine: a custom definition ----------
+  # ---------- Engine: custom definitions ----------
   policy_definitions = {
+    # The drop-a-file workflow: the rule lives in a versioned .json file (write it by hand or export
+    # from the portal), and adding a policy is one file plus one entry here.
+    deny-public-ip = {
+      name         = "deny-public-ip-${local.def_suffix}"
+      display_name = "Deny public IP addresses"
+      description  = "Blocks creation of standalone public IP addresses in the scope."
+      mode         = "Indexed"
+      policy_rule  = file("${path.module}/policies/deny-public-ip.json")
+    }
+
+    # The inline-HCL workflow: the rule is Terraform-native and parameterised.
     approved-providers = {
       name         = "approved-providers-${local.def_suffix}"
       display_name = "Approved resource providers"
@@ -171,6 +182,12 @@ module "policy" {
 
   # ---------- Engine: assignments of the initiative and a built-in, with the full block surface ----
   policy_assignments = {
+    # The file-based custom definition, assigned by key.
+    deny-public-ip = {
+      definition_key = "deny-public-ip"
+      display_name   = "Deny public IP addresses"
+    }
+
     governance = {
       set_definition_key = "governance-baseline"
       display_name       = "Governance baseline"

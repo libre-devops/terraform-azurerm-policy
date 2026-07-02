@@ -31,8 +31,11 @@ module "policy" {
   scope_type = "resource_group"
 
   baseline_policies = {
+    # Empty entries accept the curated defaults (these two arrive as Deny).
     storage_deny_public_access = {}
     storage_secure_transfer    = {}
-    keyvault_soft_delete       = {}
+
+    # Overriding a curated default is one attribute: soften soft-delete from Deny to Audit.
+    keyvault_soft_delete = { effect = "Audit" }
   }
 }

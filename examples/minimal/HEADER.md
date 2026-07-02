@@ -14,9 +14,10 @@
 
 # Minimal example
 
-The smallest valid call: three no-parameter guardrails from the curated baseline (storage public
-access, secure transfer, key vault soft delete), assigned at resource group scope so their Deny
-effects only govern this example's disposable resource group. The scope id is computed (the RG is
+The smallest valid call: three guardrails from the curated baseline, assigned at resource group scope
+so their effects only govern this example's disposable resource group. Two entries accept the curated
+Deny defaults and one shows the override pattern (key vault soft delete softened from Deny to Audit
+with a single attribute). The scope id is computed (the RG is
 created in the same plan), so the example sets `scope_type = "resource_group"` explicitly. The
 environment comes from the Terraform workspace (`terraform.workspace`), not a variable. Run it with
 `just e2e minimal`, which applies the stack then always destroys it.
