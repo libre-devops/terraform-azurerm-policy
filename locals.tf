@@ -254,10 +254,12 @@ locals {
       location                     = try(coalesce(a.location, var.location), null)
 
       valid_catalog_key = true
+      # coalesce sentinels keep the contains() operands non-null: Terraform does not short-circuit
+      # || on all versions, so the right side must evaluate safely even when the key is null.
       target_ok = (
         length([for t in [a.policy_definition_id, a.definition_key, a.set_definition_key] : t if t != null]) == 1 &&
-        (a.definition_key == null || contains(keys(var.policy_definitions), a.definition_key)) &&
-        (a.set_definition_key == null || contains(keys(var.policy_set_definitions), a.set_definition_key))
+        (a.definition_key == null || contains(keys(var.policy_definitions), coalesce(a.definition_key, "-"))) &&
+        (a.set_definition_key == null || contains(keys(var.policy_set_definitions), coalesce(a.set_definition_key, "-")))
       )
       effect_ok          = true
       missing_parameters = toset([])

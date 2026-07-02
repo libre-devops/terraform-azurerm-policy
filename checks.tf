@@ -20,10 +20,11 @@ check "unenforced_assignments_are_visible" {
   }
 }
 
-# A Waiver exemption without an expiry tends to become permanent; nudge for a review date.
+# A Waiver exemption without an expiry tends to become permanent; nudge for a review date. Reads the
+# normalized cfg (never the raw any-typed variable, whose entries may lack the attributes entirely).
 check "waiver_exemptions_expire" {
   assert {
-    condition     = alltrue([for e in values(var.policy_exemptions) : !(e.exemption_category == "Waiver" && e.expires_on == null)])
-    error_message = "These Waiver exemptions have no expires_on: ${join(", ", sort([for k, e in var.policy_exemptions : k if e.exemption_category == "Waiver" && e.expires_on == null]))}. Waivers should carry a review date."
+    condition     = alltrue([for e in values(local.exemptions_cfg) : !(e.exemption_category == "Waiver" && e.expires_on == null)])
+    error_message = "These Waiver exemptions have no expires_on: ${join(", ", sort([for k, e in local.exemptions_cfg : k if e.exemption_category == "Waiver" && e.expires_on == null]))}. Waivers should carry a review date."
   }
 }
