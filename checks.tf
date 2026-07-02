@@ -3,11 +3,12 @@
 # scope, identity without location) are resource preconditions in main.tf instead, so they stop the
 # plan with a specific message.
 
-# The module does nothing without at least one definition, initiative, assignment, or exemption.
+# The module does nothing without at least one definition, initiative, assignment, exemption, or
+# NSP guardrail.
 check "creates_something" {
   assert {
-    condition     = length(var.baseline_policies) + length(var.policy_definitions) + length(var.policy_set_definitions) + length(var.policy_assignments) + length(var.policy_exemptions) > 0
-    error_message = "No policy objects would be created: set baseline_policies, policy_definitions, policy_set_definitions, policy_assignments, or policy_exemptions."
+    condition     = length(var.baseline_policies) + length(var.policy_definitions) + length(var.policy_set_definitions) + length(var.policy_assignments) + length(var.policy_exemptions) + length(local.nsp_definitions_cfg) > 0
+    error_message = "No policy objects would be created: set baseline_policies, policy_definitions, policy_set_definitions, policy_assignments, policy_exemptions, or nsp_guardrails."
   }
 }
 

@@ -46,6 +46,11 @@ ceremony of a full ALZ policy estate. Two layers in one module:
   (custom or built-in) at **any scope** (management group, subscription, resource group, or single
   resource, detected from the scope id and routed to the right resource), and exemptions target an
   assignment by key.
+- **NSP guardrails** (`nsp_guardrails`): ready-made custom policies for network security perimeters,
+  where no built-ins exist. One opt-in flags NSP associations not in Enforced access mode, and (given
+  `approved_perimeter_ids`) audits storage accounts and key vaults that are not associated with one of
+  YOUR approved perimeters. The rules ship as versioned JSON under [`policies/`](./policies) and run
+  through the module's own engine.
 
 Enterprise conveniences handled for you: plain parameter values are wrapped into the ARM assignment
 format; Modify / DeployIfNotExists assignments get a system-assigned identity and the module grants it
@@ -124,8 +129,8 @@ module "policy" {
   and enforcement overrides, the identity-bearing Modify policy with its automatic role grant, the
   MCSB initiative, custom definitions (one from a versioned .json file, one inline HCL), a custom
   initiative, engine assignments with non-compliance
-  messages, overrides, and resource selectors, and exemptions targeting baseline and engine
-  assignments. Everything is scoped to a disposable resource group, so the Deny effects govern nothing
+  messages, overrides, and resource selectors, exemptions targeting baseline and engine assignments,
+  and the NSP guardrails pinned to a real network security perimeter. Everything is scoped to a disposable resource group, so the Deny effects govern nothing
   but the example itself.
 
 ## Developing

@@ -1,0 +1,16 @@
+{
+  "if": {
+    "field": "type",
+    "equals": "Microsoft.KeyVault/vaults"
+  },
+  "then": {
+    "effect": "[parameters('effect')]",
+    "details": {
+      "type": "Microsoft.KeyVault/vaults/networkSecurityPerimeterConfigurations",
+      "existenceCondition": {
+        "field": "Microsoft.KeyVault/vaults/networkSecurityPerimeterConfigurations/networkSecurityPerimeter.id",
+        "in": "[parameters('approvedPerimeterIds')]"
+      }
+    }
+  }
+}

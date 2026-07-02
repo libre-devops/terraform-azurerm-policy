@@ -22,7 +22,9 @@ grant), and the MCSB initiative with a custom non-compliance message. The engine
 definition (HCL policy rule), a custom initiative mixing that definition with a built-in, an
 assignment with per-reference non-compliance messages, a built-in assignment with overrides and
 resource selectors, and exemptions targeting a baseline entry (Mitigated) and an engine assignment
-(time-boxed Waiver). Management-group scope is exercised in [`tests`](../../tests) with a mocked
+(time-boxed Waiver). The NSP guardrails are pinned to a real network security perimeter created by the
+example, auditing associations not in Enforced mode and storage/key vault resources outside the
+approved perimeter. Management-group scope is exercised in [`tests`](../../tests) with a mocked
 provider, since the CI principal holds subscription Owner only. Run it with `just e2e complete`,
 which applies the stack then always destroys it.
 

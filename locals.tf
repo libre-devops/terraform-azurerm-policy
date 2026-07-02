@@ -38,18 +38,23 @@ locals {
     }
   }
 
-  definitions_cfg = {
-    for k, raw in var.policy_definitions : k => {
-      name                = try(raw.name, k)
-      display_name        = try(raw.display_name, k)
-      description         = try(raw.description, null)
-      mode                = try(coalesce(raw.mode), "All")
-      policy_rule         = try(raw.policy_rule, null)
-      parameters          = try(raw.parameters, null)
-      metadata            = try(raw.metadata, null)
-      management_group_id = try(raw.management_group_id, null)
-    }
-  }
+  # Caller definitions plus the nsp_guardrails definitions (see nsp.tf); the guardrail keys are
+  # reserved and win a collision (a check block surfaces any shadowed caller entry).
+  definitions_cfg = merge(
+    {
+      for k, raw in var.policy_definitions : k => {
+        name                = try(raw.name, k)
+        display_name        = try(raw.display_name, k)
+        description         = try(raw.description, null)
+        mode                = try(coalesce(raw.mode), "All")
+        policy_rule         = try(raw.policy_rule, null)
+        parameters          = try(raw.parameters, null)
+        metadata            = try(raw.metadata, null)
+        management_group_id = try(raw.management_group_id, null)
+      }
+    },
+    local.nsp_definitions_cfg,
+  )
 
   set_definitions_cfg = {
     for k, raw in var.policy_set_definitions : k => {
@@ -272,7 +277,7 @@ locals {
     }
   }
 
-  assignments_all = merge(local.baseline_expanded, local.custom_expanded)
+  assignments_all = merge(local.baseline_expanded, local.custom_expanded, local.nsp_expanded)
 
   # ---------- Scope routing ----------
   # An explicit scope_type wins; otherwise the scope string decides which azurerm resource an

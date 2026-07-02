@@ -303,6 +303,76 @@ run "identity_and_role_grant" {
   }
 }
 
+# NSP guardrails: with approved perimeters, all three custom policies are created and assigned; the
+# membership assignments carry the approved ids and the access-mode policy defaults to Audit.
+run "nsp_guardrails_full" {
+  command = apply
+
+  variables {
+    nsp_guardrails = {
+      approved_perimeter_ids = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-net/providers/Microsoft.Network/networkSecurityPerimeters/nsp-approved"]
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_policy_definition.this) == 3
+    error_message = "The access-mode, storage-membership, and keyvault-membership definitions should all be created."
+  }
+
+  assert {
+    condition     = length(azurerm_subscription_policy_assignment.this) == 3
+    error_message = "All three NSP guardrails should be assigned at the module scope."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["nsp|nsp-association-access-mode"].parameters).effect.value == "Audit"
+    error_message = "The access-mode guardrail should default to Audit (Learning is the sanctioned onboarding step)."
+  }
+
+  assert {
+    condition     = contains(jsondecode(azurerm_subscription_policy_assignment.this["nsp|nsp-storage-perimeter-membership"].parameters).approvedPerimeterIds.value, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-net/providers/Microsoft.Network/networkSecurityPerimeters/nsp-approved")
+    error_message = "The membership assignment should carry the approved perimeter ids."
+  }
+}
+
+# Without approved perimeters, only the access-mode guardrail exists; the effect override flows.
+run "nsp_access_mode_only_with_deny" {
+  command = apply
+
+  variables {
+    nsp_guardrails = {
+      access_mode_effect = "Deny"
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_policy_definition.this) == 1 && length(azurerm_subscription_policy_assignment.this) == 1
+    error_message = "Only the access-mode guardrail should be created without approved_perimeter_ids."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["nsp|nsp-association-access-mode"].parameters).effect.value == "Deny"
+    error_message = "access_mode_effect = Deny should flow through to the assignment."
+  }
+}
+
+# require_association_for narrows the membership policies to one resource type.
+run "nsp_membership_narrowed" {
+  command = apply
+
+  variables {
+    nsp_guardrails = {
+      approved_perimeter_ids  = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-net/providers/Microsoft.Network/networkSecurityPerimeters/nsp-approved"]
+      require_association_for = ["storage_account"]
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_policy_definition.this) == 2 && can(azurerm_policy_definition.this["nsp-storage-perimeter-membership"])
+    error_message = "Only the access-mode and storage-membership policies should be created."
+  }
+}
+
 # Identity without a location fails the plan via the precondition.
 run "rejects_identity_without_location" {
   command = plan

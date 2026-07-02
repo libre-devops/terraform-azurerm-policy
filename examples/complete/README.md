@@ -22,7 +22,9 @@ grant), and the MCSB initiative with a custom non-compliance message. The engine
 definition (HCL policy rule), a custom initiative mixing that definition with a built-in, an
 assignment with per-reference non-compliance messages, a built-in assignment with overrides and
 resource selectors, and exemptions targeting a baseline entry (Mitigated) and an engine assignment
-(time-boxed Waiver). Management-group scope is exercised in [`tests`](../../tests) with a mocked
+(time-boxed Waiver). The NSP guardrails are pinned to a real network security perimeter created by the
+example, auditing associations not in Enforced mode and storage/key vault resources outside the
+approved perimeter. Management-group scope is exercised in [`tests`](../../tests) with a mocked
 provider, since the CI principal holds subscription Owner only. Run it with `just e2e complete`,
 which applies the stack then always destroys it.
 
@@ -35,6 +37,7 @@ which applies the stack then always destroys it.
 locals {
   location = lookup(var.regions, var.loc, "uksouth")
   rg_name  = "rg-${var.short}-${var.loc}-${terraform.workspace}-002"
+  nsp_name = "nsp-${var.short}-${var.loc}-${terraform.workspace}-002"
 
   # Custom definitions and initiatives are subscription-global, so their names carry the workspace to
   # keep concurrent runs from colliding (the example resource group is already per-stack).
@@ -59,6 +62,21 @@ module "rg" {
   resource_groups = [{ name = local.rg_name, location = local.location, tags = module.tags.tags }]
 }
 
+# A real network security perimeter for the NSP guardrails to pin (its id feeds
+# approved_perimeter_ids below).
+module "nsp" {
+  source  = "libre-devops/network-security-perimeter/azurerm"
+  version = "~> 4.0"
+
+  resource_group_id = module.rg.ids[local.rg_name]
+  location          = local.location
+  tags              = module.tags.tags
+
+  network_security_perimeters = {
+    (local.nsp_name) = {}
+  }
+}
+
 # Complete call: the full surface. Everything is scoped to this example's resource group so the Deny
 # effects only govern an empty, disposable RG; the same shapes work unchanged at management group or
 # subscription scope. The scope id is computed (the RG is created in this plan), hence scope_type.
@@ -68,6 +86,14 @@ module "policy" {
   scope_id   = module.rg.ids[local.rg_name]
   scope_type = "resource_group"
   location   = local.location # for the identity-bearing Modify assignment
+
+  # ---------- NSP guardrails: ready-made custom policies (no built-ins exist for this) ----------
+  # Flags associations not in Enforced mode, and storage accounts / key vaults in the scope that are
+  # not associated with the approved perimeter above.
+  nsp_guardrails = {
+    approved_perimeter_ids = [module.nsp.ids[local.nsp_name]]
+    definition_name_suffix = "-${terraform.workspace}"
+  }
 
   # ---------- Curated baseline: defaults, parameters, overrides, and an identity policy ----------
   baseline_policies = {
@@ -251,6 +277,7 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_nsp"></a> [nsp](#module\_nsp) | libre-devops/network-security-perimeter/azurerm | ~> 4.0 |
 | <a name="module_policy"></a> [policy](#module\_policy) | ../../ | n/a |
 | <a name="module_rg"></a> [rg](#module\_rg) | libre-devops/rg/azurerm | ~> 4.0 |
 | <a name="module_tags"></a> [tags](#module\_tags) | libre-devops/tags/azurerm | ~> 4.0 |

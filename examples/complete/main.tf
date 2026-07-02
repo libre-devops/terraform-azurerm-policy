@@ -1,6 +1,7 @@
 locals {
   location = lookup(var.regions, var.loc, "uksouth")
   rg_name  = "rg-${var.short}-${var.loc}-${terraform.workspace}-002"
+  nsp_name = "nsp-${var.short}-${var.loc}-${terraform.workspace}-002"
 
   # Custom definitions and initiatives are subscription-global, so their names carry the workspace to
   # keep concurrent runs from colliding (the example resource group is already per-stack).
@@ -25,6 +26,21 @@ module "rg" {
   resource_groups = [{ name = local.rg_name, location = local.location, tags = module.tags.tags }]
 }
 
+# A real network security perimeter for the NSP guardrails to pin (its id feeds
+# approved_perimeter_ids below).
+module "nsp" {
+  source  = "libre-devops/network-security-perimeter/azurerm"
+  version = "~> 4.0"
+
+  resource_group_id = module.rg.ids[local.rg_name]
+  location          = local.location
+  tags              = module.tags.tags
+
+  network_security_perimeters = {
+    (local.nsp_name) = {}
+  }
+}
+
 # Complete call: the full surface. Everything is scoped to this example's resource group so the Deny
 # effects only govern an empty, disposable RG; the same shapes work unchanged at management group or
 # subscription scope. The scope id is computed (the RG is created in this plan), hence scope_type.
@@ -34,6 +50,14 @@ module "policy" {
   scope_id   = module.rg.ids[local.rg_name]
   scope_type = "resource_group"
   location   = local.location # for the identity-bearing Modify assignment
+
+  # ---------- NSP guardrails: ready-made custom policies (no built-ins exist for this) ----------
+  # Flags associations not in Enforced mode, and storage accounts / key vaults in the scope that are
+  # not associated with the approved perimeter above.
+  nsp_guardrails = {
+    approved_perimeter_ids = [module.nsp.ids[local.nsp_name]]
+    definition_name_suffix = "-${terraform.workspace}"
+  }
 
   # ---------- Curated baseline: defaults, parameters, overrides, and an identity policy ----------
   baseline_policies = {
