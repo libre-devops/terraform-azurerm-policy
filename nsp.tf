@@ -33,10 +33,25 @@ DESC
 locals {
   nsp_enabled = var.nsp_guardrails != null
 
-  nsp_access_mode_effect = try(coalesce(try(var.nsp_guardrails.access_mode_effect, null)), "Audit")
-  nsp_approved_ids       = try(coalesce(try(var.nsp_guardrails.approved_perimeter_ids, null)), [])
-  nsp_membership_for     = try(coalesce(try(var.nsp_guardrails.require_association_for, null)), ["storage_account", "key_vault"])
-  nsp_suffix             = try(coalesce(try(var.nsp_guardrails.definition_name_suffix, null)), "")
+  # Attribute reads use a contains(keys()) guard, NOT try(): approved_perimeter_ids routinely holds
+  # COMPUTED perimeter ids, and try() over an expression containing unknowns returns a wholly-unknown
+  # value, which would poison the definition gating below and blow up the for_each. keys() of the
+  # object and the length of the list stay plan-known even when the ids themselves are unknown.
+  # (Ternaries only evaluate the taken branch, so the guarded reads are also null-safe on the
+  # non-short-circuiting Terraform versions.)
+  nsp_attr_keys = local.nsp_enabled ? keys(var.nsp_guardrails) : []
+
+  nsp_access_mode_effect_raw = contains(local.nsp_attr_keys, "access_mode_effect") ? var.nsp_guardrails.access_mode_effect : null
+  nsp_access_mode_effect     = local.nsp_access_mode_effect_raw == null ? "Audit" : local.nsp_access_mode_effect_raw
+
+  nsp_approved_ids_raw = contains(local.nsp_attr_keys, "approved_perimeter_ids") ? var.nsp_guardrails.approved_perimeter_ids : null
+  nsp_approved_ids     = local.nsp_approved_ids_raw == null ? [] : local.nsp_approved_ids_raw
+
+  nsp_membership_for_raw = contains(local.nsp_attr_keys, "require_association_for") ? var.nsp_guardrails.require_association_for : null
+  nsp_membership_for     = local.nsp_membership_for_raw == null ? ["storage_account", "key_vault"] : local.nsp_membership_for_raw
+
+  nsp_suffix_raw = contains(local.nsp_attr_keys, "definition_name_suffix") ? var.nsp_guardrails.definition_name_suffix : null
+  nsp_suffix     = local.nsp_suffix_raw == null ? "" : local.nsp_suffix_raw
 
   # Membership policies are only meaningful with an approved-perimeter list. Their creation is gated
   # on list LENGTH (plan-known even when the ids themselves are computed perimeter ids).
