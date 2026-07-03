@@ -54,6 +54,8 @@ locals {
       }
     },
     local.nsp_definitions_cfg,
+    local.rg_locks_definitions_cfg,
+    local.governance_definitions_cfg,
   )
 
   set_definitions_cfg = {
@@ -277,7 +279,7 @@ locals {
     }
   }
 
-  assignments_all = merge(local.baseline_expanded, local.custom_expanded, local.nsp_expanded)
+  assignments_all = merge(local.baseline_expanded, local.custom_expanded, local.nsp_expanded, local.rg_locks_expanded, local.governance_expanded)
 
   # ---------- Scope routing ----------
   # An explicit scope_type wins; otherwise the scope string decides which azurerm resource an

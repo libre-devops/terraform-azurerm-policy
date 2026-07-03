@@ -1,0 +1,21 @@
+{
+  "if": {
+    "allOf": [
+      {
+        "field": "type",
+        "equals": "Microsoft.Authorization/roleAssignments"
+      },
+      {
+        "field": "Microsoft.Authorization/roleAssignments/principalType",
+        "in": "[parameters('principalTypes')]"
+      },
+      {
+        "field": "Microsoft.Authorization/roleAssignments/roleDefinitionId",
+        "notIn": "[parameters('approvedRoleDefinitionIds')]"
+      }
+    ]
+  },
+  "then": {
+    "effect": "[parameters('effect')]"
+  }
+}

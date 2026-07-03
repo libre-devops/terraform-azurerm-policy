@@ -385,3 +385,153 @@ run "rejects_identity_without_location" {
 
   expect_failures = [azurerm_subscription_policy_assignment.this]
 }
+
+# The resource group lock guardrail: one definition, two DINE assignments with identities, and the
+# User Access Administrator grants created THROUGH the engine, so they exist only with the
+# guardrail itself.
+run "rg_lock_guardrails_defaults" {
+  command = apply
+
+  variables {
+    location           = "uksouth"
+    rg_lock_guardrails = {}
+  }
+
+  assert {
+    condition     = contains(keys(azurerm_policy_definition.this), "rg-lock-by-tag")
+    error_message = "The lock-by-tag definition should be created."
+  }
+
+  assert {
+    condition     = length([for k in keys(azurerm_subscription_policy_assignment.this) : k if startswith(k, "rglock|")]) == 2
+    error_message = "Both the ReadOnly and CanNotDelete assignments should exist."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["rglock|readonly"].parameters).lockLevel.value == "ReadOnly" && jsondecode(azurerm_subscription_policy_assignment.this["rglock|readonly"].parameters).tagValues.value[0] == "Critical"
+    error_message = "The ReadOnly assignment should target BusinessLevel = Critical."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["rglock|cannotdelete"].parameters).lockLevel.value == "CanNotDelete" && jsondecode(azurerm_subscription_policy_assignment.this["rglock|cannotdelete"].parameters).tagValues.value[0] == "Production"
+    error_message = "The CanNotDelete assignment should target BusinessLevel = Production."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["rglock|readonly"].parameters).effect.value == "DeployIfNotExists"
+    error_message = "The effect should default to DeployIfNotExists."
+  }
+
+  assert {
+    condition     = azurerm_subscription_policy_assignment.this["rglock|readonly"].identity[0].type == "SystemAssigned"
+    error_message = "The assignments should carry a system-assigned identity."
+  }
+
+  assert {
+    condition     = length(azurerm_role_assignment.policy_identity) == 2
+    error_message = "The User Access Administrator grant should exist for each lock assignment, and only alongside it."
+  }
+}
+
+# Overrides: custom tag semantics, an audit-only rollout, and dropping the CanNotDelete half.
+run "rg_lock_guardrails_overridden" {
+  command = apply
+
+  variables {
+    location = "uksouth"
+    rg_lock_guardrails = {
+      tag_name                = "BusinessCriticality"
+      readonly_tag_values     = ["Mission-Critical", "Critical"]
+      cannotdelete_tag_values = []
+      effect                  = "AuditIfNotExists"
+    }
+  }
+
+  assert {
+    condition     = length([for k in keys(azurerm_subscription_policy_assignment.this) : k if startswith(k, "rglock|")]) == 1
+    error_message = "Emptying cannotdelete_tag_values should drop that assignment."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["rglock|readonly"].parameters).tagName.value == "BusinessCriticality"
+    error_message = "The tag name override should flow through."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["rglock|readonly"].parameters).effect.value == "AuditIfNotExists"
+    error_message = "The effect override should flow through."
+  }
+}
+
+# Off by default: no definition, no assignments, and critically NO standing role grants. The
+# empty module call legitimately trips the creates_something warning; that is the point.
+run "rg_lock_guardrails_off_means_no_grants" {
+  command = apply
+
+  expect_failures = [check.creates_something]
+
+  assert {
+    condition     = !contains(keys(azurerm_policy_definition.this), "rg-lock-by-tag")
+    error_message = "No lock definition should exist without opting in."
+  }
+
+  assert {
+    condition     = length(azurerm_role_assignment.policy_identity) == 0
+    error_message = "No User Access Administrator grant should exist when the guardrail is off."
+  }
+}
+
+# The cherry-picked governance guardrails: approved principal roles and NSG hygiene, audit-first.
+run "governance_guardrails" {
+  command = apply
+
+  variables {
+    rbac_guardrails = {
+      approved_role_definition_ids = ["b24988ac-6180-42a0-ab88-20f7382dd24c"]
+      principal_types              = ["ServicePrincipal", "User"]
+    }
+    nsg_guardrails = {
+      effect = "Deny"
+    }
+  }
+
+  assert {
+    condition     = contains(keys(azurerm_policy_definition.this), "rbac-approved-principal-roles") && contains(keys(azurerm_policy_definition.this), "nsg-permissive-inbound-rule")
+    error_message = "Both governance definitions should be created."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["rbac|rbac-approved-principal-roles"].parameters).approvedRoleDefinitionIds.value[0] == "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+    error_message = "Bare role GUIDs should expand to full definition ids."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["rbac|rbac-approved-principal-roles"].parameters).effect.value == "Audit"
+    error_message = "RBAC governance should default to Audit."
+  }
+
+  assert {
+    condition     = jsondecode(azurerm_subscription_policy_assignment.this["nsghygiene|nsg-permissive-inbound-rule"].parameters).effect.value == "Deny"
+    error_message = "The NSG effect override should flow through."
+  }
+}
+
+# RBAC guardrails without an approved list create nothing (the list is the policy).
+run "rbac_guardrails_need_a_list" {
+  command = apply
+
+  variables {
+    rbac_guardrails = {}
+    nsg_guardrails  = {}
+  }
+
+  assert {
+    condition     = !contains(keys(azurerm_policy_definition.this), "rbac-approved-principal-roles")
+    error_message = "No approved list, no RBAC definition."
+  }
+
+  assert {
+    condition     = contains(keys(azurerm_policy_definition.this), "nsg-permissive-inbound-rule")
+    error_message = "The NSG hygiene guardrail should still exist."
+  }
+}

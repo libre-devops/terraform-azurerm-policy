@@ -59,6 +59,31 @@ module "policy" {
     definition_name_suffix = "-${terraform.workspace}"
   }
 
+  # ---------- Resource group lock guardrails: DeployIfNotExists keeps locks on tagged groups ----------
+  # ReadOnly where BusinessLevel = Critical, CanNotDelete where BusinessLevel = Production. The
+  # assignments carry system-assigned identities granted User Access Administrator at the scope
+  # THROUGH the engine, so those grants exist only while the guardrail does. No resource group in
+  # this stack carries the tags, deliberately: a remediated ReadOnly lock would block the destroy.
+  rg_lock_guardrails = {
+    definition_name_suffix = "-${terraform.workspace}"
+  }
+
+  # ---------- Governance guardrails: cherry-picked from real estates, audit-first ----------
+  # Role assignments granting unapproved roles to service principals, and NSG rules allowing
+  # inbound traffic from anywhere or to every port.
+  rbac_guardrails = {
+    approved_role_definition_ids = [
+      "b24988ac-6180-42a0-ab88-20f7382dd24c", # Contributor
+      "acdd72a7-3385-48ef-bd42-f606fba81ae7", # Reader
+      "ba92f5b4-2d11-453d-a403-e96b0029c9fe", # Storage Blob Data Contributor
+    ]
+    definition_name_suffix = "-${terraform.workspace}"
+  }
+
+  nsg_guardrails = {
+    definition_name_suffix = "-${terraform.workspace}"
+  }
+
   # ---------- Curated baseline: defaults, parameters, overrides, and an identity policy ----------
   baseline_policies = {
     # Required-parameter entries.

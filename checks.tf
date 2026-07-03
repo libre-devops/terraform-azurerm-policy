@@ -7,7 +7,7 @@
 # NSP guardrail.
 check "creates_something" {
   assert {
-    condition     = length(var.baseline_policies) + length(var.policy_definitions) + length(var.policy_set_definitions) + length(var.policy_assignments) + length(var.policy_exemptions) + length(local.nsp_definitions_cfg) > 0
+    condition     = length(var.baseline_policies) + length(var.policy_definitions) + length(var.policy_set_definitions) + length(var.policy_assignments) + length(var.policy_exemptions) + length(local.nsp_definitions_cfg) + length(local.rg_locks_definitions_cfg) + length(local.governance_definitions_cfg) > 0
     error_message = "No policy objects would be created: set baseline_policies, policy_definitions, policy_set_definitions, policy_assignments, policy_exemptions, or nsp_guardrails."
   }
 }

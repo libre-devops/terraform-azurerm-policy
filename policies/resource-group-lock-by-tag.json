@@ -1,0 +1,57 @@
+{
+  "if": {
+    "allOf": [
+      {
+        "field": "type",
+        "equals": "Microsoft.Resources/subscriptions/resourceGroups"
+      },
+      {
+        "value": "[if(empty(field(concat('tags[', parameters('tagName'), ']'))), '', field(concat('tags[', parameters('tagName'), ']')))]",
+        "in": "[parameters('tagValues')]"
+      }
+    ]
+  },
+  "then": {
+    "effect": "[parameters('effect')]",
+    "details": {
+      "type": "Microsoft.Authorization/locks",
+      "existenceScope": "resourcegroup",
+      "deploymentScope": "resourcegroup",
+      "existenceCondition": {
+        "field": "Microsoft.Authorization/locks/level",
+        "equals": "[parameters('lockLevel')]"
+      },
+      "roleDefinitionIds": [
+        "/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9"
+      ],
+      "deployment": {
+        "properties": {
+          "mode": "incremental",
+          "template": {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {
+              "lockLevel": { "type": "string" },
+              "lockNotes": { "type": "string" }
+            },
+            "resources": [
+              {
+                "type": "Microsoft.Authorization/locks",
+                "apiVersion": "2020-05-01",
+                "name": "[concat('policy-', toLower(parameters('lockLevel')), '-lock')]",
+                "properties": {
+                  "level": "[parameters('lockLevel')]",
+                  "notes": "[parameters('lockNotes')]"
+                }
+              }
+            ]
+          },
+          "parameters": {
+            "lockLevel": { "value": "[parameters('lockLevel')]" },
+            "lockNotes": { "value": "[parameters('lockNotes')]" }
+          }
+        }
+      }
+    }
+  }
+}
