@@ -1,13 +1,14 @@
 variable "baseline_display_name_prefix" {
-  description = "Prefix prepended to baseline assignment display names so they are recognisable in the portal."
+  description = "Branding prepended to every module-authored assignment display name (the baseline and all guardrail packs) so they are recognisable in the portal. Set null for no branding."
   type        = string
-  default     = "[LDO Baseline]"
+  default     = "[LibreDevOps]"
+  nullable    = true
 }
 
 variable "baseline_non_compliance_message" {
-  description = "Default non-compliance message for baseline assignments. The literal token {policy} is replaced with the policy display name."
+  description = "Non-compliance message for every module-authored assignment (the baseline and all guardrail packs). The literal token {policy} is replaced with the policy display name; when platform_contact_email is set, a contact sentence is appended automatically."
   type        = string
-  default     = "Denied or flagged by the {policy} policy assignment. Contact the platform team if you believe this is in error."
+  default     = "You have tried to do an action that is blocked. You cannot do this: {policy}."
 }
 
 variable "baseline_policies" {
@@ -41,6 +42,12 @@ DESC
 
 variable "location" {
   description = "Azure region stamped on identity-bearing assignments (Modify / DeployIfNotExists policies require a located managed identity). Required when any baseline or engine assignment carries an identity."
+  type        = string
+  default     = null
+}
+
+variable "platform_contact_email" {
+  description = "Contact address appended to every module-authored non-compliance message (\"Please contact <email> for more info.\"). Null (the default) appends nothing."
   type        = string
   default     = null
 }

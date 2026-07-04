@@ -1,4 +1,8 @@
 locals {
+  # Branding and messaging shared by every module-authored assignment (baseline and guardrails).
+  authored_display_prefix          = var.baseline_display_name_prefix == null ? "" : var.baseline_display_name_prefix
+  authored_non_compliance_template = var.platform_contact_email == null ? var.baseline_non_compliance_message : "${var.baseline_non_compliance_message} Please contact ${var.platform_contact_email} for more info."
+
   valid_scope_types = ["management_group", "subscription", "resource_group", "resource"]
 
   # A placeholder catalog entry substituted when a baseline key does not exist, so the expansion below
@@ -194,7 +198,7 @@ locals {
       scope_type           = cfg.scope_type != null ? cfg.scope_type : (cfg.scope_id == null ? var.scope_type : null)
       policy_definition_id = local.baseline_catalog_effective[k].policy_id
       name_override        = null
-      display_name         = coalesce(cfg.display_name, trimspace("${var.baseline_display_name_prefix} ${local.baseline_catalog_effective[k].display_name}"))
+      display_name         = coalesce(cfg.display_name, trimspace("${local.authored_display_prefix} ${local.baseline_catalog_effective[k].display_name}"))
       description          = coalesce(cfg.description, local.baseline_catalog_effective[k].description)
       enforce              = coalesce(cfg.enforce, local.baseline_catalog_effective[k].default_enforce)
       not_scopes           = cfg.not_scopes
@@ -203,7 +207,7 @@ locals {
       resource_selectors   = []
 
       non_compliance_messages = [{
-        content                        = coalesce(cfg.non_compliance_message, replace(var.baseline_non_compliance_message, "{policy}", local.baseline_catalog_effective[k].display_name))
+        content                        = coalesce(cfg.non_compliance_message, replace(local.authored_non_compliance_template, "{policy}", local.baseline_catalog_effective[k].display_name))
         policy_definition_reference_id = null
       }]
 

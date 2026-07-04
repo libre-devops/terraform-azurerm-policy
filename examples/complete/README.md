@@ -87,6 +87,10 @@ module "policy" {
   scope_type = "resource_group"
   location   = local.location # for the identity-bearing Modify assignment
 
+  # Every module-authored assignment carries the branding and, when set, the contact sentence:
+  # "... Please contact platform@example.com for more info."
+  platform_contact_email = "platform@example.com"
+
   # ---------- NSP guardrails: ready-made custom policies (no built-ins exist for this) ----------
   # Flags associations not in Enforced mode, and storage accounts / key vaults in the scope that are
   # not associated with the approved perimeter above.

@@ -107,7 +107,7 @@ locals {
       scope_type           = var.scope_type
       policy_definition_id = azurerm_policy_definition.this["rg-lock-by-tag"].id
       name_override        = null
-      display_name         = trimspace("${var.baseline_display_name_prefix} ${lvl.label} lock on ${local.rg_locks_tag_name} = ${join("/", lvl.tag_values)} resource groups")
+      display_name         = trimspace("${local.authored_display_prefix} ${lvl.label} lock on ${local.rg_locks_tag_name} = ${join("/", lvl.tag_values)} resource groups")
       description          = "Keeps a ${lvl.label} management lock on resource groups whose ${local.rg_locks_tag_name} tag is one of: ${join(", ", lvl.tag_values)}."
       enforce              = true
       not_scopes           = []
@@ -116,7 +116,7 @@ locals {
       resource_selectors   = []
 
       non_compliance_messages = [{
-        content                        = replace(var.baseline_non_compliance_message, "{policy}", "${lvl.label} lock on business-critical resource groups")
+        content                        = replace(local.authored_non_compliance_template, "{policy}", "${lvl.label} lock on business-critical resource groups")
         policy_definition_reference_id = null
       }]
 

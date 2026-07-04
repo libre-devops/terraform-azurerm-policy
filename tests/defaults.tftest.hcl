@@ -78,7 +78,7 @@ run "baseline_defaults" {
   }
 
   assert {
-    condition     = startswith(azurerm_subscription_policy_assignment.this["baseline|storage_deny_public_access"].display_name, "[LDO Baseline]")
+    condition     = startswith(azurerm_subscription_policy_assignment.this["baseline|storage_deny_public_access"].display_name, "[LibreDevOps]")
     error_message = "Baseline display names should carry the baseline prefix."
   }
 
@@ -533,5 +533,50 @@ run "rbac_guardrails_need_a_list" {
   assert {
     condition     = contains(keys(azurerm_policy_definition.this), "nsg-permissive-inbound-rule")
     error_message = "The NSG hygiene guardrail should still exist."
+  }
+}
+
+# Branding and contact email flow into every module-authored assignment message; null branding
+# leaves display names bare.
+run "branding_and_contact_email" {
+  command = apply
+
+  variables {
+    platform_contact_email = "platform@libredevops.org"
+    nsg_guardrails         = {}
+  }
+
+  assert {
+    condition     = startswith(azurerm_subscription_policy_assignment.this["nsghygiene|nsg-permissive-inbound-rule"].display_name, "[LibreDevOps]")
+    error_message = "The default branding should prefix authored display names."
+  }
+
+  assert {
+    condition     = endswith(azurerm_subscription_policy_assignment.this["nsghygiene|nsg-permissive-inbound-rule"].non_compliance_message[0].content, "Please contact platform@libredevops.org for more info.")
+    error_message = "The contact sentence should be appended when the email is set."
+  }
+
+  assert {
+    condition     = strcontains(azurerm_subscription_policy_assignment.this["nsghygiene|nsg-permissive-inbound-rule"].non_compliance_message[0].content, "You have tried to do an action that is blocked. You cannot do this:")
+    error_message = "The default message should carry the blocked-action phrasing."
+  }
+}
+
+run "branding_can_be_null" {
+  command = apply
+
+  variables {
+    baseline_display_name_prefix = null
+    nsg_guardrails               = {}
+  }
+
+  assert {
+    condition     = startswith(azurerm_subscription_policy_assignment.this["nsghygiene|nsg-permissive-inbound-rule"].display_name, "NSG rules")
+    error_message = "Null branding should leave display names bare."
+  }
+
+  assert {
+    condition     = !strcontains(azurerm_subscription_policy_assignment.this["nsghygiene|nsg-permissive-inbound-rule"].non_compliance_message[0].content, "Please contact")
+    error_message = "No contact sentence should be appended without an email."
   }
 }

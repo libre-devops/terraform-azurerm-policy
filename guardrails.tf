@@ -122,7 +122,7 @@ locals {
         scope_type           = var.scope_type
         policy_definition_id = azurerm_policy_definition.this[k].id
         name_override        = null
-        display_name         = trimspace("${var.baseline_display_name_prefix} ${d.display_name}")
+        display_name         = trimspace("${local.authored_display_prefix} ${d.display_name}")
         description          = d.description
         enforce              = true
         not_scopes           = []
@@ -131,7 +131,7 @@ locals {
         resource_selectors   = []
 
         non_compliance_messages = [{
-          content                        = replace(var.baseline_non_compliance_message, "{policy}", d.display_name)
+          content                        = replace(local.authored_non_compliance_template, "{policy}", d.display_name)
           policy_definition_reference_id = null
         }]
 
@@ -158,7 +158,7 @@ locals {
         scope_type           = var.scope_type
         policy_definition_id = azurerm_policy_definition.this[k].id
         name_override        = null
-        display_name         = trimspace("${var.baseline_display_name_prefix} ${d.display_name}")
+        display_name         = trimspace("${local.authored_display_prefix} ${d.display_name}")
         description          = d.description
         enforce              = true
         not_scopes           = []
@@ -167,7 +167,7 @@ locals {
         resource_selectors   = []
 
         non_compliance_messages = [{
-          content                        = replace(var.baseline_non_compliance_message, "{policy}", d.display_name)
+          content                        = replace(local.authored_non_compliance_template, "{policy}", d.display_name)
           policy_definition_reference_id = null
         }]
 
