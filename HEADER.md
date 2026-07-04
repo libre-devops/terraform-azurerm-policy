@@ -120,39 +120,6 @@ module "policy" {
 }
 ```
 
-## The deploy story, in full
-
-Deploying code to flex consumption is unlike every other Functions plan, and each of these
-statements was verified live while building this module:
-
-**How flex deployment actually works.** The app runs from a package in its deployment storage
-container, but the container is not a drop-box: the host loads the one package the deployment
-service produced. A deploy means the deployment service takes your zip, runs the remote build
-(Python dependencies are installed server-side; your zip carries source only), writes the BUILT
-artifact into the deployment container under its own layout, and flips the host metadata so
-instances load it. Uploading a blob yourself does nothing. There is no Kudu console, no site
-extensions, and no WEBSITE_RUN_FROM_PACKAGE on flex; only a minimal deployment endpoint.
-
-**The paths, and what is wrong with each:**
-
-| Path | Verdict | Why |
-| --- | --- | --- |
-| `zip_deploy_file` (provider attribute) | Broken upstream | After pushing, the provider polls a deployment-status endpoint that 404s on flex apps even when healthy; reproduced with clean identity setup, and AVM built their own one-deploy submodule rather than use it. Passthrough kept for when it is fixed; a check steers you away. |
-| `az functionapp deployment source config-zip` (push bytes) | Works with fresh credentials only | This is the classic "create an empty app, then CLI build-and-deploy" flow, and it is fine interactively. Inside a Terraform apply on CI it dies: the runner's OIDC assertion expires five minutes after login (AADSTS700024), long before a flex stack finishes applying, and Terraform cannot POST binary bodies itself. |
-| ARM one-deploy with `packageUri` (pull; what the complete example does) | Works, with one asterisk | The download is anonymous: no identity option exists on that API, so the URL must be a SAS, and SAS needs account keys. The example therefore stages the package in a tiny keys-on TRANSPORT account and hands one-deploy a short-lived read-only SAS. The app's own storage stays fully keyless: the deployment service writes the built package into it server-side under the app's identity. (AVM's equivalent uses a one-year SAS and keeps keys on the app's storage; quarantining the SAS to a transport account is strictly tighter.) |
-| Dropping the zip in the deployment container with `azurerm_storage_blob` | Does nothing | No build, no metadata flip; the host never looks at it. |
-| Locking the storage to the app's outbound IPs | Breaks everything | Deploys 403 and the running host 503s: flex reaches its storage from platform ranges, not the published outbound IPs. VNet integration with service or private endpoints is the only working lockdown. |
-| Vendored packages (build on the runner, deploy with remote build off) | Works, and mandatory for egress-blocked apps | Build where the internet is: `pip install --target .python_packages/lib/site-packages -r requirements.txt` on the runner, zip the result, deploy with `remoteBuild: false`. The deployment service then does no pip at all, which is required when the app cannot reach PyPI (VNet-isolated), and the artifact you tested is byte-identical to what runs. Wheel tags must match the target (linux x86_64, the app's Python minor). |
-
-**So is it keyless?** The app and its storage, yes, end to end, and a FULLY keyless deploy is
-possible whenever the pusher holds a live AAD token: push-bytes (config-zip or the GitHub
-functions-action) against a keyless app works with no keys and no SAS anywhere, verified live.
-What is not possible today is fully keyless from INSIDE a single Terraform apply: Terraform
-cannot POST binary bodies, CLI tokens expire mid-apply, and the pull path fetches anonymously,
-hence the SAS on a throwaway transport account. It cannot be otherwise until Microsoft either
-fixes the provider's push path or teaches one-deploy to fetch with an identity; the day either
-lands, the transport account disappears and nothing else changes.
-
 ## Examples
 
 - [`examples/minimal`](./examples/minimal) - three guardrails at resource group scope, including a
